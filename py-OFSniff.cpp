@@ -64,6 +64,13 @@ bool parseEndpointFromArgs(PyObject *args, PyObject *keywords, IPv4EndpointType&
 
 /* ========== EXPOSED MODULE METHODS ========== */
 
+static PyObject* _OFSniff_isSniffing(PyObject *self, PyObject *args) {
+    if (threadWrap.sniffer)
+        Py_RETURN_TRUE;
+    else
+        Py_RETURN_FALSE;
+}
+
 /* Creates new Sniffer and starts sniffing
  * Only starts sniff loop if there's no current sniffer
  */
@@ -273,6 +280,7 @@ static PyObject* _OFSniff_getDp2CtrlRTT(PyObject *self, PyObject *args, PyObject
 static PyMethodDef OFSniffMethods[] = {
     {"startSniffLoop", _OFSniff_startSniffLoop, METH_VARARGS, "Start sniffing in secondary thread"},
     {"stopSniffLoop", _OFSniff_stopSniffLoop, METH_VARARGS, "Stop sniffing"},
+    {"isSniffing", _OFSniff_isSniffing, METH_VARARGS, "Indicates whether the sniff loop has started"},
     {"getEndpoints", (PyCFunction)_OFSniff_getEndpoints, METH_VARARGS, "Get endpoints"},
     {"getEchoRTTAvg", (PyCFunction)_OFSniff_getEchoRTTAvg, METH_VARARGS, "Get the average echo RTT for a given endpoint"},
     {"getEchoRTTVar", (PyCFunction)_OFSniff_getEchoRTTVar, METH_VARARGS, "Get the variance of echo RTT for a given endpoint"},
