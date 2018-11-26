@@ -87,18 +87,47 @@ void EndpointLatencyMetadata::updateLinkLat(const IPv4EndpointType dpEndpoint,
     updateStats(linkLatMeta.linkLatSamples, LINK_LAT_SAMPLES, latEstimate,
                 linkLatMeta.linkLatAvg, linkLatMeta.linkLatVar);
 
-    //if (_statsLog.is_open()) {
-    //    _statsLog << dpEndpoint << " EchoRTT " << latEstimate << " " <<
-    //        latMeta.linkLatAvg << " " << latMeta.linkLatVar << endl;
-    //}
+    if (_statsLog.is_open()) {
+        _statsLog << dpEndpoint << " LinkLatRTT-Port" << port_no <<
+            " " << latEstimate << " " << linkLatMeta.linkLatAvg <<
+            " " << linkLatMeta.linkLatVar << endl;
+    }
 }
 
 double EndpointLatencyMetadata::getEchoRTTAvg(const IPv4EndpointType dpEndpoint) {
-    return _endpoint2LatMeta[dpEndpoint].echoRTTAvg;
+    //return _endpoint2LatMeta[dpEndpoint].echoRTTAvg;
+
+    // TEMP HACK -- REPLACE w/ MEDIAN OF SAMPLES
+    vector<double> tmpVec = _endpoint2LatMeta[dpEndpoint].echoRTTSamples;
+    std::sort(tmpVec.begin(), tmpVec.end());
+    double median = 0;
+    if (tmpVec.size() == 0)
+        median = 0;
+    else if (tmpVec.size() % 2 == 0)
+        median = (tmpVec[tmpVec.size() / 2 - 1] + tmpVec[tmpVec.size() / 2]) / 2;
+    else
+        median = tmpVec[tmpVec.size() / 2];
+
+    std::cout << "... In getEchoRTTAvg, median is: " << median << endl;
+    return median;
+
 }
 
 double EndpointLatencyMetadata::getPktInRTTAvg(const IPv4EndpointType dpEndpoint) {
-    return _endpoint2LatMeta[dpEndpoint].pktInRTTAvg;
+    //return _endpoint2LatMeta[dpEndpoint].pktInRTTAvg;
+    // TEMP HACK -- REPLACE pktInRTTAvg w/ MEDIAN OF SAMPLES
+    vector<double> tmpVec = _endpoint2LatMeta[dpEndpoint].pktInRTTSamples;
+    std::sort(tmpVec.begin(), tmpVec.end());
+    double median = 0;
+    if (tmpVec.size() == 0)
+        median = 0;
+    else if (tmpVec.size() % 2 == 0)
+        median = (tmpVec[tmpVec.size() / 2 - 1] + tmpVec[tmpVec.size() / 2]) / 2;
+    else
+        median = tmpVec[tmpVec.size() / 2];
+
+    std::cout << "... In getPktInRTTAvg, median is: " << median << endl;
+    return median;
 }
 
 double EndpointLatencyMetadata::getEchoRTTVar(const IPv4EndpointType dpEndpoint) {
@@ -112,6 +141,20 @@ double EndpointLatencyMetadata::getPktInRTTVar(const IPv4EndpointType dpEndpoint
 // TODO: Input should really be a pair of endpoints
 double EndpointLatencyMetadata::getLinkLatAvg(const IPv4EndpointType dpEndpoint, const uint16_t port_no) {
     return _endpoint2LatMeta[dpEndpoint].linkLatMeta[port_no].linkLatAvg;
+
+    // TEMP HACK -- REPLACE w/ MEDIAN OF SAMPLES
+    //vector<double> tmpVec = _endpoint2LatMeta[dpEndpoint].linkLatMeta[port_no].linkLatSamples;
+    //std::sort(tmpVec.begin(), tmpVec.end());
+    //double median = 0;
+    //if (tmpVec.size() == 0)
+    //    median = 0;
+    //else if (tmpVec.size() % 2 == 0)
+    //    median = (tmpVec[tmpVec.size() / 2 - 1] + tmpVec[tmpVec.size() / 2]) / 2;
+    //else
+    //    median = tmpVec[tmpVec.size() / 2];
+
+    //std::cout << "... In getLinkLatAvg, median is: " << median << endl;
+    //return median;
 }
 
 // TODO: Input should really be a pair of endpoints
@@ -128,7 +171,21 @@ vector<IPv4EndpointType> EndpointLatencyMetadata::getEndpoints() {
 }
 
 double EndpointLatencyMetadata::getDp2CtrlRTT(IPv4EndpointType dpEndpoint) {
-     // Total datapath to controller latencies
-    return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + _endpoint2LatMeta[dpEndpoint].pktInRTTAvg;
+    // Total datapath to controller latencies
+    //return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + _endpoint2LatMeta[dpEndpoint].pktInRTTAvg;
+
+    // TEMP HACK -- REPLACE pktInRTTAvg w/ MEDIAN OF SAMPLES
+    vector<double> tmpVec = _endpoint2LatMeta[dpEndpoint].pktInRTTSamples;
+    std::sort(tmpVec.begin(), tmpVec.end());
+    double median = 0;
+    if (tmpVec.size() == 0)
+        median = 0;
+    else if (tmpVec.size() % 2 == 0)
+        median = (tmpVec[tmpVec.size() / 2 - 1] + tmpVec[tmpVec.size() / 2]) / 2;
+    else
+        median = tmpVec[tmpVec.size() / 2];
+
+    std::cout << "... In getDp2CtrlRTT, median is: " << median << endl;
+    return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + median;
 }
 

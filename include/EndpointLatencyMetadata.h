@@ -57,7 +57,11 @@ class EndpointLatencyMetadata {
 
             // SRTT TESTING / DEBUGGING
             //sampleAvg = sampleAvg + SRTT_GAIN * (newVal - sampleAvg);
-            //return;
+            vTimes.push_back(newVal);
+            if (vTimes.size() > maxVecSize)
+                vTimes.erase(vTimes.begin()); // Keep it bounded
+            sampleAvg = sampleAvg + 0.125 * (newVal - sampleAvg);
+            return;
             // END DEBUGGING
 
             vTimes.push_back(newVal);

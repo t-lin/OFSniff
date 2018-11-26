@@ -18,7 +18,7 @@ using std::endl;
 using std::string;
 using namespace Tins;
 
-//#define PRINTOUT // For debugging
+#define PRINTOUT // For debugging
 #define STATS_FILELOG false // TODO: Make into argument
 #define CTRL_OF_PORT 6633 // TODO: Make customizable
 
@@ -47,7 +47,7 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
     //uint64_t datapath_id = 0;
     uint32_t port_no = 0; // NOTE: OpenFlow 1.0 has 16-bit long port #'s
     string packetID;
-    double packetRTT = 0; // "RTT" parsed from packets
+    double dp2CtrlRTT = 0; // "RTT" parsed from packets
 
     LLDP_TLV firstTLV = LLDP_TLV(lldp->payload().data()); // Creates linked list of TLVs
     for (LLDP_TLV* tlv = &firstTLV; tlv->next() != nullptr; tlv = tlv->next()) {
@@ -80,7 +80,7 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
                     uint64_t lastSemiCol = sysName.find_last_of(';');
                     if (firstSemiCol != string::npos && firstSemiCol != lastSemiCol) {
                         packetID = sysName.substr(firstSemiCol + 1, PACKET_ID_LEN);
-                        packetRTT = stod(sysName.substr(lastSemiCol + 1));
+                        dp2CtrlRTT = stod(sysName.substr(lastSemiCol + 1));
                     } else {
                         // Malformed System Name, abort processing of this packet
                         cout << "ERROR: Malformed System Name field" << endl;
@@ -120,7 +120,7 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
      *  Thus, we must have a per-switch tracking of when packets are seen.
      */
     PacketSeenType& pktSeenMap = epLatMeta.getPacketSeenMap(dpEndpoint);
-    bool isPing = (!packetRTT) ? true : false; // Just to improve readability...
+    bool isPing = (!dp2CtrlRTT) ? true : false; // Just to improve readability...
 
     if (bPacketIn) {
         if (isPing) {
@@ -152,7 +152,8 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
             }
 
 
-            // FOR DEBUGGING
+            // FOR DEBUGGING: Calculate elapsed time between when packet first seen at one
+            //                switch, and when it appears at a neighbouring switch
             /*
 			IPv4EndpointType otherEndpoint = 0;
 			for (IPv4EndpointType key : epLatMeta.getEndpoints()) {
@@ -182,8 +183,16 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
                 epLatMeta.remOutstandingPkt(dpEndpoint, port_no, packetID);
 
                 double rtt = CalcTimestampDiff(reqTs, ts);
+                double estimatedLat = rtt - epLatMeta.getEchoRTTAvg(dpEndpoint) - dp2CtrlRTT;
+                if (estimatedLat < 0)
+                    // Sometimes estimate is less than 0... Set to 0? Or ignore?
+                    estimatedLat = 0;
 
-                // FOR DEBUGGING
+                epLatMeta.updateLinkLat(dpEndpoint, port_no, estimatedLat);
+
+                // FOR DEBUGGING: Gets remote connection's switch <=> controller RTT by
+                //                accessing epLatMeta directly (ignores parsed dp2CtrlRTT)
+                /*
                 IPv4EndpointType otherEndpoint = 0;
                 for (IPv4EndpointType key : epLatMeta.getEndpoints()) {
                     //cout << "endpoint: " << key << endl; // FOR DEBUGGING
@@ -202,14 +211,15 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
                     cout << "... Dp2CtrlRTT of other endpoint: " << epLatMeta.getDp2CtrlRTT(otherEndpoint) << " ms" << endl;
                     cout << "... EchoRTT of this endpoint: " << epLatMeta.getEchoRTTAvg(dpEndpoint) <<
                             " ms ; stdev = " << sqrt(epLatMeta.getEchoRTTVar(dpEndpoint)) << endl;
-                    cout << "... Estimated link RTT: " << estimatedLat << " ms" << endl;
-                    cout << "... Average link RTT: " << epLatMeta.getLinkLatAvg(dpEndpoint, port_no) <<
-                            " ms ; stdev = " << sqrt(epLatMeta.getLinkLatVar(dpEndpoint, port_no)) << endl;
 #endif
                 }
+                */
                 // END DEBUGGING
 
 #ifdef PRINTOUT
+                cout << "... Estimated link RTT: " << estimatedLat << " ms" << endl;
+                cout << "... Average link RTT: " << epLatMeta.getLinkLatAvg(dpEndpoint, port_no) <<
+                        " ms ; stdev = " << sqrt(epLatMeta.getLinkLatVar(dpEndpoint, port_no)) << endl;
                 cout << dpEndpoint << " LLDP REMOTE CONTROLLER ping-pong (pktId: " << packetID << ") elapsed time: " << rtt << " ms" << endl;
 #endif
             }
