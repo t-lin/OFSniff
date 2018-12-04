@@ -35,9 +35,18 @@ __all__ = ('startSniffLoop', 'stopSniffLoop',
         'getLinkLatAvg', 'getLinkLatVar', 'getDp2CtrlRTT',)
 
 
-def startSniffLoop():
-    _OFSniff.startSniffLoop()
-    return
+# If iface is None, OFSniff will sniff all interfaces
+# Returns True if loop successfully started w/ input parameters
+# Returns False otherwise
+def startSniffLoop(iface, ofp_port):
+    if iface is None:
+        iface = "any"
+
+    assert type(iface) in (str, unicode)
+    assert type(ofp_port) is int
+    assert ofp_port <= 65535
+
+    return _OFSniff.startSniffLoop(iface, ofp_port)
 
 def stopSniffLoop():
     _OFSniff.stopSniffLoop()

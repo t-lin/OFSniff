@@ -20,7 +20,6 @@ using namespace Tins;
 
 //#define PRINTOUT // For debugging
 #define STATS_FILELOG false // TODO: Make into argument
-#define CTRL_OF_PORT 6633 // TODO: Make customizable
 
 /* bool bPacketIn
  *  true if intercepting an OpenFlow PacketIn (switch => ctrl)
@@ -341,7 +340,11 @@ void ParseOFPacket(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
     return;
 }
 
-void OFSniffLoop(Sniffer*& sniffer, EndpointLatencyMetadata& epLatMeta) {
+/* OFSniffLoop is currently explicitly designed to not catch exceptions, as
+ * different users may wish to handle different exceptions in their own way.
+ */
+void OFSniffLoop(Sniffer*& sniffer, uint16_t ofp_port,
+                    EndpointLatencyMetadata& epLatMeta) {
     if (STATS_FILELOG && !epLatMeta.openStatsLog()) {
         cout << "ERROR: Unable to open statistics log for writing" << endl;
         exit(1);
@@ -358,11 +361,13 @@ void OFSniffLoop(Sniffer*& sniffer, EndpointLatencyMetadata& epLatMeta) {
             // Right now, assume only TCP & UDP above IP
             if (const TCP *tcp = packet->pdu()->find_pdu<TCP>()) {
                 pduType = "TCP";
-                if (tcp->dport() == CTRL_OF_PORT || tcp->sport() == CTRL_OF_PORT) { // Sanity-check connection to controller
+
+                // Sanity-check connection to controller
+                if (tcp->dport() == ofp_port || tcp->sport() == ofp_port) {
                     const RawPDU *raw = packet->pdu()->find_pdu<RawPDU>();
                     if (raw != nullptr) {
                         pduType = "OpenFlow packet";
-                        toSwitch = (tcp->sport() == CTRL_OF_PORT) ? true : false;
+                        toSwitch = (tcp->sport() == ofp_port) ? true : false;
                         dpEndpoint = toSwitch ?
                                 GenIPv4Endpoint(ip->dst_addr(), tcp->dport()) :
                                 GenIPv4Endpoint(ip->src_addr(), tcp->sport());
@@ -371,6 +376,8 @@ void OFSniffLoop(Sniffer*& sniffer, EndpointLatencyMetadata& epLatMeta) {
 
                         ParseOFPacket(packet->timestamp(), dpEndpoint, ofMsg, epLatMeta, toSwitch);
                     }
+                } else {
+                    cout << "ERROR: Packet doesn't seem to be related to the OpenFlow connection" << endl;
                 }
             } else if (packet->pdu()->find_pdu<UDP>()) {
                 pduType = "UDP";

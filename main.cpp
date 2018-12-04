@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
     sigaction (SIGTERM, &action, NULL);
 
     string iface;
-    string filter;
+    string ofpPort;
 
     if (argc == 1) {
-        cout << "Usage: " << argv[0] << " <interface name> \"<optional filter (pcap format)>\"" << endl;
+        cout << "Usage: " << argv[0] << " <interface name> <openflow listening port number>" << endl;
         exit(0);
     } else if (argc == 2) {
         iface = argv[1];
@@ -44,29 +44,47 @@ int main(int argc, char *argv[]) {
         }
     } else {
         iface = argv[1];
-        filter = argv[2];
+        ofpPort = argv[2];
+
+        // Verify that ofpPort is a number
+        for (uint32_t i = 0; i < ofpPort.length(); i++) {
+            if (!isdigit(ofpPort[i])) {
+                cout << "ERROR: Second parameter is not a number" << endl;
+                exit(1);
+            }
+        }
+
+        // Verify ofpPort is a valid port number
+        if (stoul(ofpPort) > 65535) {
+            cout << "ERROR: Invalid port number (" << ofpPort << " > 65535)" << endl;
+            exit(1);
+        }
     }
 
+    string filter = "tcp port " + ofpPort;
+
     SnifferConfiguration config;
-    if (!filter.empty())
-        config.set_filter(filter);
+    config.set_filter(filter);
     config.set_promisc_mode(false);
     config.set_snap_len(MAX_CAP_LEN);
     config.set_immediate_mode(true);
 
-    sniffer = new Sniffer(iface, config);
+    try {
+        sniffer = new Sniffer(iface, config);
+    } catch (const std::exception &ex) {
+        cout << "ERROR: Unable to create new Sniffer object" << endl;
+        cout << ex.what() << endl;
+        exit(1);
+    }
 
     EndpointLatencyMetadata epLatMeta;
 
-    OFSniffLoop(sniffer, epLatMeta);
-
-    //std::thread sniffThread(OFSniffLoop, std::ref(sniffer), std::ref(epLatMeta));
-
-    ///* Wait for thread to terminate.
-    // * It likely won't terminate unless it crashes.
-    // * Exit gracefully if it does.
-    // */
-    //sniffThread.join();
+    try {
+        OFSniffLoop(sniffer, (uint16_t)stoul(ofpPort), epLatMeta);
+    } catch (const std::exception &ex) {
+        cout << "ERROR: Unexpected exit of OFSniffLoop" << endl;
+        cout << ex.what() << endl;
+    }
 
     if (sniffer)
         delete sniffer;

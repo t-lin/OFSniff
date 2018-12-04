@@ -1,6 +1,8 @@
 #include <Python.h>
 #include <iostream>
 #include <thread>
+#include <exception>
+#include <string>
 
 // Packet processing libs
 #include <tins/tins.h>
@@ -15,14 +17,11 @@ using namespace Tins;
 
 #define MAX_CAP_LEN 1500 // Standard Ethernet frame length
 #define STATS_FILELOG false // TODO: Make cmd-line arg
-#define CTRL_OF_PORT 6633 // TODO: Un-hardcode this
 
+// TODO: Catch exceptions thrown from sniff loop
+//       Can use global exception handle, and assign from within loop
 
-// Global objects and handles
-static EndpointLatencyMetadata epLatMeta;
-static SnifferConfiguration sniffConfig;
-
-/* Class to wrap the thread and sniffer object.
+/* Class to wrap the thread and sniffer objects.
  * This class exists simply so we can use the destructor.
  *
  * When the Python interpreter ends and instances go out-of-scope,
@@ -45,7 +44,27 @@ class ThreadWrapper {
         };
 };
 
+// Global objects and handles
 static ThreadWrapper threadWrap;
+static EndpointLatencyMetadata epLatMeta;
+
+/* Wraps OFSniffLoop to catch any exceptions that may occur.
+ * This function can run in its own separate thread.
+ * Used to either handle the exceptions or print out the error messages, then
+ * gracefully exit the loop without crashing the program.
+ */
+void OFSniffLoopWrapper(Sniffer*& sniffer, uint16_t ofp_port,
+                        EndpointLatencyMetadata& epLatMeta) {
+    try {
+        OFSniffLoop(sniffer, ofp_port, epLatMeta);
+    } catch (const std::exception &ex) {
+        // General exception handler for now, until we know of specific cases
+        cout << "ERROR: Unexpected exit of OFSniffLoop" << endl;
+        cout << ex.what() << endl;
+    }
+
+    return;
+}
 
 /* Parses argument for "endpoint" keyword
  * Writes parsed value to the "endpoint" output argument
@@ -62,6 +81,7 @@ bool parseEndpointFromArgs(PyObject *args, PyObject *keywords, IPv4EndpointType&
     return true;
 }
 
+
 /* ========== EXPOSED MODULE METHODS ========== */
 
 static PyObject* _OFSniff_isSniffing(PyObject *self, PyObject *args) {
@@ -74,24 +94,51 @@ static PyObject* _OFSniff_isSniffing(PyObject *self, PyObject *args) {
 /* Creates new Sniffer and starts sniffing
  * Only starts sniff loop if there's no current sniffer
  */
-static PyObject* _OFSniff_startSniffLoop(PyObject *self, PyObject *args) {
+static PyObject* _OFSniff_startSniffLoop(PyObject *self, PyObject *args, PyObject *keywords) {
     if ( !threadWrap.sniffer ) {
+        char* iface = NULL;
+        uint16_t ofp_port = 0;
+
+        static char *kwlist[] = {(char*)"iface", (char*)"ofp_port", NULL};
+
+        // "s" = char * (NULL-terminated C-string)
+        // "H" = unsigned short (aka uint16_t)
+        if (!PyArg_ParseTupleAndKeywords(args, keywords, "sH", kwlist, &iface, &ofp_port))
+            cout << "ERROR: Unable to parse input parameters" << endl;
+
+        string filter = "tcp port " + std::to_string(ofp_port);
+
         // Set sniffer configurations
-        sniffConfig.set_filter("tcp and port 6633"); // TODO: Un-hardcode this...
+        SnifferConfiguration sniffConfig;
+        sniffConfig.set_filter(filter);
         sniffConfig.set_promisc_mode(false);
         sniffConfig.set_snap_len(MAX_CAP_LEN);
         sniffConfig.set_immediate_mode(true);
 
-        string iface = "any"; // TODO: Un-hardcode this somehow...
-
         threadWrap.sniffer = new Sniffer(iface, sniffConfig);
 
-        threadWrap.threadHandle = std::thread(OFSniffLoop,
-                                        std::ref(threadWrap.sniffer),
-                                        std::ref(epLatMeta));
+        if (threadWrap.sniffer != NULL) {
+            try {
+                threadWrap.threadHandle = std::thread(OFSniffLoopWrapper,
+                                                std::ref(threadWrap.sniffer),
+                                                ofp_port,
+                                                std::ref(epLatMeta));
+            } catch (const std::exception &ex) {
+                cout << "ERROR in _OFSniff_startSniffLoop: Thread creation failed" << endl;
+                cout << ex.what() << endl;
+                Py_RETURN_FALSE;
+            }
+        }
+        else {
+            cout << "ERROR in _OFSniff_startSniffLoop: Sniffer allocation failed" << endl;
+            Py_RETURN_FALSE;
+        }
+    } else {
+        cout << "ERROR: Sniffing already started. Stop the current sniff loop first if changing sniffing parameters." << endl;
+        Py_RETURN_FALSE;
     }
 
-    Py_RETURN_NONE;
+    Py_RETURN_TRUE;
 }
 
 static PyObject* _OFSniff_stopSniffLoop(PyObject *self, PyObject *args) {
@@ -278,7 +325,7 @@ static PyObject* _OFSniff_getDp2CtrlRTT(PyObject *self, PyObject *args, PyObject
 
 
 static PyMethodDef OFSniffMethods[] = {
-    {"startSniffLoop", _OFSniff_startSniffLoop, METH_VARARGS, "Start sniffing in secondary thread"},
+    {"startSniffLoop", (PyCFunction)_OFSniff_startSniffLoop, METH_VARARGS, "Start sniffing in secondary thread"},
     {"stopSniffLoop", _OFSniff_stopSniffLoop, METH_VARARGS, "Stop sniffing"},
     {"isSniffing", _OFSniff_isSniffing, METH_VARARGS, "Indicates whether the sniff loop has started"},
     {"getEndpoints", (PyCFunction)_OFSniff_getEndpoints, METH_VARARGS, "Get endpoints"},
@@ -296,5 +343,4 @@ static PyMethodDef OFSniffMethods[] = {
 PyMODINIT_FUNC init_OFSniff() {
     // Create module and add methods
     Py_InitModule("_OFSniff", OFSniffMethods);
-    //PyObject *module = Py_InitModule("_FlowRecords", TestMethods);
 }

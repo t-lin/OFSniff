@@ -28,6 +28,10 @@ void ProcessEcho(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
 void ParseOFPacket(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
                     EndpointLatencyMetadata& epLatMeta, bool toSwitch);
 
-void OFSniffLoop(Sniffer*& sniffer, EndpointLatencyMetadata& epLatMeta);
+/* OFSniffLoop is currently explicitly designed to not catch exceptions, as
+ * different users may wish to handle different exceptions in their own way.
+ */
+void OFSniffLoop(Sniffer*& sniffer, uint16_t ofp_port,
+                    EndpointLatencyMetadata& epLatMeta);
 
 #endif
