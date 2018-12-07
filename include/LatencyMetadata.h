@@ -19,6 +19,8 @@ typedef struct LinkLatMetadata {
     vector<double> linkLatSamples;
     double linkLatAvg;
     double linkLatVar;
+    double linkLatSRTT;
+    double linkLatMed;
 } LinkLatMetadata;
 
 /* Each instance of LatencyMetadata tracks data related to a single switch */
@@ -35,11 +37,13 @@ typedef struct LatencyMetadata {
     vector<double> echoRTTSamples;
     double echoRTTAvg;
     double echoRTTVar;
+    double echoRTTMed;
 
     /* PacketIn RTT = Time from PacketIn Ping to PacketOut Pong */
     vector<double> pktInRTTSamples;
     double pktInRTTAvg;
     double pktInRTTVar;
+    double pktInRTTMed;
 
     /* Tracks per-port link latency metadata.
      * Link latency samples over a window, sample average, and sample variance.

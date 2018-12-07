@@ -13,9 +13,9 @@ using std::endl;
 class EndpointLatencyMetadata {
     private:
         /* Window sizes for different measurement samples */
-        const uint16_t ECHO_RTT_SAMPLES = 15;
-        const uint16_t PKT_IN_RTT_SAMPLES = 60;
-        const uint16_t LINK_LAT_SAMPLES = 20;
+        const uint16_t ECHO_RTT_WINDOW = 15;
+        const uint16_t PKT_IN_RTT_WINDOW = 60;
+        const uint16_t LINK_LAT_WINDOW = 20;
 
         /* Maximum outstanding packet IDs per port */
         const uint16_t MAX_OUTSTANDING_PKTS = 20;
@@ -53,12 +53,8 @@ class EndpointLatencyMetadata {
          * update the sampleAvg and sampleVar parameters.
          */
         void updateStats(vector<double>& vTimes, const uint16_t maxVecSize,
-                    const double newVal, double& sampleAvg, double& sampleVar) {
-
-            // SRTT TESTING / DEBUGGING
-            //sampleAvg = sampleAvg + SRTT_GAIN * (newVal - sampleAvg);
-            //return;
-            // END DEBUGGING
+                            const double newVal, double& sampleAvg,
+                            double& sampleVar, double& sampleMed) {
 
             vTimes.push_back(newVal);
             if (vTimes.size() > maxVecSize) {
@@ -76,6 +72,19 @@ class EndpointLatencyMetadata {
                 sampleAvg = RTTAvg(vTimes);
                 sampleVar = RTTVar(vTimes, sampleAvg);
             }
+
+            /* TODO: Median calculation currently super-inefficient.
+             *       Copying + sorting each time increases cost as maxVecSize increases.
+             *       Fix later using max-heap and min-heap.
+             */
+            vector<double> tmpVec = vTimes;
+            std::sort(tmpVec.begin(), tmpVec.end());
+            if (tmpVec.size() == 0)
+                sampleMed = 0;
+            else if (tmpVec.size() % 2 == 0)
+                sampleMed = (tmpVec[tmpVec.size() / 2 - 1] + tmpVec[tmpVec.size() / 2]) / 2;
+            else
+                sampleMed = tmpVec[tmpVec.size() / 2];
 
             return;
         }
@@ -111,15 +120,22 @@ class EndpointLatencyMetadata {
 
         double getEchoRTTVar(const IPv4EndpointType dpEndpoint);
 
+        double getEchoRTTMed(const IPv4EndpointType dpEndpoint);
+
         double getPktInRTTAvg(const IPv4EndpointType dpEndpoint);
 
         double getPktInRTTVar(const IPv4EndpointType dpEndpoint);
+
+        double getPktInRTTMed(const IPv4EndpointType dpEndpoint);
 
         // TODO: Input should really be a pair of endpoints
         double getLinkLatAvg(const IPv4EndpointType dpEndpoint, const uint16_t port_no);
 
         // TODO: Input should really be a pair of endpoints
         double getLinkLatVar(const IPv4EndpointType dpEndpoint, const uint16_t port_no);
+
+        // TODO: Input should really be a pair of endpoints
+        double getLinkLatMed(const IPv4EndpointType dpEndpoint, const uint16_t port_no);
 
         vector<IPv4EndpointType> getEndpoints();
 

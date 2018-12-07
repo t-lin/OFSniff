@@ -60,8 +60,8 @@ void EndpointLatencyMetadata::remOutstandingPkt(const IPv4EndpointType dpEndpoin
 
 void EndpointLatencyMetadata::updateEchoRTT(const IPv4EndpointType dpEndpoint, const double rtt) {
     LatencyMetadata& latMeta = _endpoint2LatMeta[dpEndpoint];
-    updateStats(latMeta.echoRTTSamples, ECHO_RTT_SAMPLES, rtt,
-                latMeta.echoRTTAvg, latMeta.echoRTTVar);
+    updateStats(latMeta.echoRTTSamples, ECHO_RTT_WINDOW, rtt,
+                latMeta.echoRTTAvg, latMeta.echoRTTVar, latMeta.echoRTTMed);
 
     if (_statsLog.is_open()) {
         _statsLog << dpEndpoint << " EchoRTT " << rtt << " " <<
@@ -71,8 +71,8 @@ void EndpointLatencyMetadata::updateEchoRTT(const IPv4EndpointType dpEndpoint, c
 
 void EndpointLatencyMetadata::updatePktInRTT(const IPv4EndpointType dpEndpoint, const double rtt) {
     LatencyMetadata& latMeta = _endpoint2LatMeta[dpEndpoint];
-    updateStats(latMeta.pktInRTTSamples, PKT_IN_RTT_SAMPLES, rtt,
-                latMeta.pktInRTTAvg, latMeta.pktInRTTVar);
+    updateStats(latMeta.pktInRTTSamples, PKT_IN_RTT_WINDOW, rtt,
+                latMeta.pktInRTTAvg, latMeta.pktInRTTVar, latMeta.pktInRTTMed);
 
     if (_statsLog.is_open()) {
         _statsLog << dpEndpoint << " PktInRTT " << rtt << " " <<
@@ -82,15 +82,30 @@ void EndpointLatencyMetadata::updatePktInRTT(const IPv4EndpointType dpEndpoint, 
 
 void EndpointLatencyMetadata::updateLinkLat(const IPv4EndpointType dpEndpoint,
                     const uint16_t port_no, const double latEstimate) {
+    /* Since the latency estimate is the result of a subtraction operation
+     * involving other estimated values, it can potentially be 0. Using medians
+     * may potentially result in 0 as well.
+     *
+     * Thus we use SRTT (aka exponential moving average or low-pass filter) to
+     * smooth out the reuslts while avoiding the likelihood of 0.
+     *
+     * TODO: Consider using DEMA over EMA for faster response time?
+     * TODO: Consider some way to adjust coefficient (the 0.125) dynamically?
+     */
     LatencyMetadata& epLatMeta = _endpoint2LatMeta[dpEndpoint];
     LinkLatMetadata& linkLatMeta = epLatMeta.linkLatMeta[port_no];
-    updateStats(linkLatMeta.linkLatSamples, LINK_LAT_SAMPLES, latEstimate,
-                linkLatMeta.linkLatAvg, linkLatMeta.linkLatVar);
+    linkLatMeta.linkLatSRTT = linkLatMeta.linkLatSRTT + \
+                             0.125 * (latEstimate - linkLatMeta.linkLatSRTT);
 
-    //if (_statsLog.is_open()) {
-    //    _statsLog << dpEndpoint << " EchoRTT " << latEstimate << " " <<
-    //        latMeta.linkLatAvg << " " << latMeta.linkLatVar << endl;
-    //}
+    /* Calculate stats based on SRTT samples */
+    updateStats(linkLatMeta.linkLatSamples, LINK_LAT_WINDOW, linkLatMeta.linkLatSRTT,
+                linkLatMeta.linkLatAvg, linkLatMeta.linkLatVar, linkLatMeta.linkLatMed);
+
+    if (_statsLog.is_open()) {
+        _statsLog << dpEndpoint << " LinkLatRTT-Port" << port_no <<
+            " " << latEstimate << " " << linkLatMeta.linkLatAvg <<
+            " " << linkLatMeta.linkLatVar << endl;
+    }
 }
 
 double EndpointLatencyMetadata::getEchoRTTAvg(const IPv4EndpointType dpEndpoint) {
@@ -109,6 +124,14 @@ double EndpointLatencyMetadata::getPktInRTTVar(const IPv4EndpointType dpEndpoint
     return _endpoint2LatMeta[dpEndpoint].pktInRTTVar;
 }
 
+double EndpointLatencyMetadata::getEchoRTTMed(const IPv4EndpointType dpEndpoint) {
+    return _endpoint2LatMeta[dpEndpoint].echoRTTMed;
+}
+
+double EndpointLatencyMetadata::getPktInRTTMed(const IPv4EndpointType dpEndpoint) {
+    return _endpoint2LatMeta[dpEndpoint].pktInRTTMed;
+}
+
 // TODO: Input should really be a pair of endpoints
 double EndpointLatencyMetadata::getLinkLatAvg(const IPv4EndpointType dpEndpoint, const uint16_t port_no) {
     return _endpoint2LatMeta[dpEndpoint].linkLatMeta[port_no].linkLatAvg;
@@ -117,6 +140,11 @@ double EndpointLatencyMetadata::getLinkLatAvg(const IPv4EndpointType dpEndpoint,
 // TODO: Input should really be a pair of endpoints
 double EndpointLatencyMetadata::getLinkLatVar(const IPv4EndpointType dpEndpoint, const uint16_t port_no) {
     return _endpoint2LatMeta[dpEndpoint].linkLatMeta[port_no].linkLatVar;
+}
+
+// TODO: Input should really be a pair of endpoints
+double EndpointLatencyMetadata::getLinkLatMed(const IPv4EndpointType dpEndpoint, const uint16_t port_no) {
+    return _endpoint2LatMeta[dpEndpoint].linkLatMeta[port_no].linkLatMed;
 }
 
 vector<IPv4EndpointType> EndpointLatencyMetadata::getEndpoints() {
@@ -129,6 +157,7 @@ vector<IPv4EndpointType> EndpointLatencyMetadata::getEndpoints() {
 
 double EndpointLatencyMetadata::getDp2CtrlRTT(IPv4EndpointType dpEndpoint) {
      // Total datapath to controller latencies
-    return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + _endpoint2LatMeta[dpEndpoint].pktInRTTAvg;
+    //return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + _endpoint2LatMeta[dpEndpoint].pktInRTTMed;
+    return _endpoint2LatMeta[dpEndpoint].echoRTTMed + _endpoint2LatMeta[dpEndpoint].pktInRTTMed;
 }
 
