@@ -28,76 +28,76 @@ if os.getuid() != 0:
     print msg
     sys.exit(1)
 
-__all__ = ('startSniffLoop', 'stopSniffLoop',
-            'isSniffing', 'getEndpoints',
-            'getEchoRTTAvg', 'getEchoRTTVar', 'getEchoRTTMed',
-            'getPktInRTTAvg', 'getPktInRTTVar', 'getPktInRTTMed',
-            'getLinkLatAvg', 'getLinkLatVar', 'getLinkLatMed',
-            'getDp2CtrlRTT',)
+# Class OFSniff to wrap methods to call underlying _OFSniff methods
+# Using this as a wrapper class allows the same instance to be passed
+# and shared between multiple files with a single import
+class OFSniff(object):
+    def __init__(self):
+        pass
 
+    # If iface is None, OFSniff will sniff all interfaces
+    # Returns True if loop successfully started w/ input parameters
+    # Returns False otherwise
+    def startSniffLoop(self, iface, ofp_port):
+        if iface is None:
+            iface = "any"
 
-# If iface is None, OFSniff will sniff all interfaces
-# Returns True if loop successfully started w/ input parameters
-# Returns False otherwise
-def startSniffLoop(iface, ofp_port):
-    if iface is None:
-        iface = "any"
+        assert type(iface) in (str, unicode)
+        assert type(ofp_port) is int
+        assert ofp_port <= 65535
 
-    assert type(iface) in (str, unicode)
-    assert type(ofp_port) is int
-    assert ofp_port <= 65535
+        return _OFSniff.startSniffLoop(iface, ofp_port)
 
-    return _OFSniff.startSniffLoop(iface, ofp_port)
+    def stopSniffLoop(self):
+        _OFSniff.stopSniffLoop()
+        return
 
-def stopSniffLoop():
-    _OFSniff.stopSniffLoop()
-    return
+    def isSniffing(self):
+        return _OFSniff.isSniffing()
 
-def isSniffing():
-    return _OFSniff.isSniffing()
+    def getEndpoints(self):
+        return _OFSniff.getEndpoints()
 
-def getEndpoints():
-    return _OFSniff.getEndpoints()
+    def getEchoRTTAvg(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getEchoRTTAvg(endpoint)
 
-def getEchoRTTAvg(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getEchoRTTAvg(endpoint)
+    def getEchoRTTVar(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getEchoRTTVar(endpoint)
 
-def getEchoRTTVar(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getEchoRTTVar(endpoint)
+    def getEchoRTTMed(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getEchoRTTMed(endpoint)
 
-def getEchoRTTMed(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getEchoRTTMed(endpoint)
+    def getPktInRTTAvg(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getPktInRTTAvg(endpoint)
 
-def getPktInRTTAvg(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getPktInRTTAvg(endpoint)
+    def getPktInRTTVar(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getPktInRTTVar(endpoint)
 
-def getPktInRTTVar(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getPktInRTTVar(endpoint)
+    def getPktInRTTMed(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getPktInRTTMed(endpoint)
 
-def getPktInRTTMed(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getPktInRTTMed(endpoint)
+    def getLinkLatAvg(self, endpoint, port_no):
+        assert type(endpoint) in (long, int)
+        assert type(port_no) is int
+        return _OFSniff.getLinkLatAvg(endpoint, port_no)
 
-def getLinkLatAvg(endpoint, port_no):
-    assert type(endpoint) in (long, int)
-    assert type(port_no) is int
-    return _OFSniff.getLinkLatAvg(endpoint, port_no)
+    def getLinkLatVar(self, endpoint, port_no):
+        assert type(endpoint) in (long, int)
+        assert type(port_no) is int
+        return _OFSniff.getLinkLatVar(endpoint, port_no)
 
-def getLinkLatVar(endpoint, port_no):
-    assert type(endpoint) in (long, int)
-    assert type(port_no) is int
-    return _OFSniff.getLinkLatVar(endpoint, port_no)
+    def getLinkLatMed(self, endpoint, port_no):
+        assert type(endpoint) in (long, int)
+        assert type(port_no) is int
+        return _OFSniff.getLinkLatMed(endpoint, port_no)
 
-def getLinkLatMed(endpoint, port_no):
-    assert type(endpoint) in (long, int)
-    assert type(port_no) is int
-    return _OFSniff.getLinkLatMed(endpoint, port_no)
+    def getDp2CtrlRTT(self, endpoint):
+        assert type(endpoint) in (long, int)
+        return _OFSniff.getDp2CtrlRTT(endpoint)
 
-def getDp2CtrlRTT(endpoint):
-    assert type(endpoint) in (long, int)
-    return _OFSniff.getDp2CtrlRTT(endpoint)

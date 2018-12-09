@@ -94,6 +94,9 @@ void EndpointLatencyMetadata::updateLinkLat(const IPv4EndpointType dpEndpoint,
      */
     LatencyMetadata& epLatMeta = _endpoint2LatMeta[dpEndpoint];
     LinkLatMetadata& linkLatMeta = epLatMeta.linkLatMeta[port_no];
+    if (linkLatMeta.linkLatSRTT == 0)
+        linkLatMeta.linkLatSRTT = latEstimate; // Avoid slow convergence at start
+
     linkLatMeta.linkLatSRTT = linkLatMeta.linkLatSRTT + \
                              0.125 * (latEstimate - linkLatMeta.linkLatSRTT);
 
@@ -156,8 +159,7 @@ vector<IPv4EndpointType> EndpointLatencyMetadata::getEndpoints() {
 }
 
 double EndpointLatencyMetadata::getDp2CtrlRTT(IPv4EndpointType dpEndpoint) {
-     // Total datapath to controller latencies
-    //return _endpoint2LatMeta[dpEndpoint].echoRTTAvg + _endpoint2LatMeta[dpEndpoint].pktInRTTMed;
+    // Total datapath to controller latencies
     return _endpoint2LatMeta[dpEndpoint].echoRTTMed + _endpoint2LatMeta[dpEndpoint].pktInRTTMed;
 }
 
