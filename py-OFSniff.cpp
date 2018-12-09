@@ -18,9 +18,6 @@ using namespace Tins;
 #define MAX_CAP_LEN 1500 // Standard Ethernet frame length
 #define STATS_FILELOG false // TODO: Make cmd-line arg
 
-// TODO: Catch exceptions thrown from sniff loop
-//       Can use global exception handle, and assign from within loop
-
 /* Class to wrap the thread and sniffer objects.
  * This class exists simply so we can use the destructor.
  *
@@ -218,6 +215,25 @@ static PyObject* _OFSniff_getEchoRTTVar(PyObject *self, PyObject *args, PyObject
  *  - endpoint: unsigned long long value
  *              Representing an endpoint, likely retrieved from getEndpoints()
  */
+static PyObject* _OFSniff_getEchoRTTMed(PyObject *self, PyObject *args, PyObject *keywords) {
+    if (threadWrap.sniffer) {
+        IPv4EndpointType endpoint = 0;
+        if (parseEndpointFromArgs(args, keywords, endpoint))
+            // "d" = double
+            return Py_BuildValue("d", epLatMeta.getEchoRTTMed(endpoint));
+        else
+            cout << "ERROR: Unable to parse input parameters" << endl;
+    } else {
+        cout << "ERROR: No sniff loop started" << endl;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* Takes one parameter:
+ *  - endpoint: unsigned long long value
+ *              Representing an endpoint, likely retrieved from getEndpoints()
+ */
 static PyObject* _OFSniff_getPktInRTTAvg(PyObject *self, PyObject *args, PyObject *keywords) {
     if (threadWrap.sniffer) {
         IPv4EndpointType endpoint = 0;
@@ -243,6 +259,25 @@ static PyObject* _OFSniff_getPktInRTTVar(PyObject *self, PyObject *args, PyObjec
         if (parseEndpointFromArgs(args, keywords, endpoint))
             // "d" = double
             return Py_BuildValue("d", epLatMeta.getPktInRTTVar(endpoint));
+        else
+            cout << "ERROR: Unable to parse input parameters" << endl;
+    } else {
+        cout << "ERROR: No sniff loop started" << endl;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* Takes one parameter:
+ *  - endpoint: unsigned long long value
+ *              Representing an endpoint, likely retrieved from getEndpoints()
+ */
+static PyObject* _OFSniff_getPktInRTTMed(PyObject *self, PyObject *args, PyObject *keywords) {
+    if (threadWrap.sniffer) {
+        IPv4EndpointType endpoint = 0;
+        if (parseEndpointFromArgs(args, keywords, endpoint))
+            // "d" = double
+            return Py_BuildValue("d", epLatMeta.getPktInRTTMed(endpoint));
         else
             cout << "ERROR: Unable to parse input parameters" << endl;
     } else {
@@ -304,6 +339,32 @@ static PyObject* _OFSniff_getLinkLatVar(PyObject *self, PyObject *args, PyObject
     Py_RETURN_NONE;
 }
 
+/* Takes two parameters:
+ *  - endpoint: unsigned long long value
+ *              Representing an endpoint, likely retrieved from getEndpoints()
+ *  - port_no: unsigned short value
+ *              Represents the port number of the switch which the link is connected to
+ */
+static PyObject* _OFSniff_getLinkLatMed(PyObject *self, PyObject *args, PyObject *keywords) {
+    if (threadWrap.sniffer) {
+        IPv4EndpointType endpoint = 0;
+        uint16_t port_no = 0;
+
+        static char *kwlist[] = {(char*)"endpoint", (char*)"port_no", NULL};
+
+        // "K" = unsigned long long (aka uint64_t)
+        // "H" = unsigned short (aka uint16_t)
+        if (PyArg_ParseTupleAndKeywords(args, keywords, "KH", kwlist, &endpoint, &port_no))
+            return Py_BuildValue("d", epLatMeta.getLinkLatMed(endpoint, port_no));
+        else
+            cout << "ERROR: Unable to parse input parameters" << endl;
+    } else {
+        cout << "ERROR: No sniff loop started" << endl;
+    }
+
+    Py_RETURN_NONE;
+}
+
 /* Takes one parameter:
  *  - endpoint: unsigned long long value
  *              Representing an endpoint, likely retrieved from getEndpoints()
@@ -331,10 +392,13 @@ static PyMethodDef OFSniffMethods[] = {
     {"getEndpoints", (PyCFunction)_OFSniff_getEndpoints, METH_VARARGS, "Get endpoints"},
     {"getEchoRTTAvg", (PyCFunction)_OFSniff_getEchoRTTAvg, METH_VARARGS, "Get the average echo RTT for a given endpoint"},
     {"getEchoRTTVar", (PyCFunction)_OFSniff_getEchoRTTVar, METH_VARARGS, "Get the variance of echo RTT for a given endpoint"},
+    {"getEchoRTTMed", (PyCFunction)_OFSniff_getEchoRTTMed, METH_VARARGS, "Get the median of echo RTT for a given endpoint"},
     {"getPktInRTTAvg", (PyCFunction)_OFSniff_getPktInRTTAvg, METH_VARARGS, "Get the average PacketIn RTT for a given endpoint"},
     {"getPktInRTTVar", (PyCFunction)_OFSniff_getPktInRTTVar, METH_VARARGS, "Get the variance of PacketIn RTT for a given endpoint"},
+    {"getPktInRTTMed", (PyCFunction)_OFSniff_getPktInRTTMed, METH_VARARGS, "Get the median of PacketIn RTT for a given endpoint"},
     {"getLinkLatAvg", (PyCFunction)_OFSniff_getLinkLatAvg, METH_VARARGS, "Get the average link latency for a given endpoint and port"},
     {"getLinkLatVar", (PyCFunction)_OFSniff_getLinkLatVar, METH_VARARGS, "Get the variance of link latnecy for a given endpoint and port"},
+    {"getLinkLatMed", (PyCFunction)_OFSniff_getLinkLatMed, METH_VARARGS, "Get the median of link latnecy for a given endpoint and port"},
     {"getDp2CtrlRTT", (PyCFunction)_OFSniff_getDp2CtrlRTT, METH_VARARGS, "Get the datapath to controller RTT for a given endpoint"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
