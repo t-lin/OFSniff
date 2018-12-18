@@ -10,7 +10,7 @@ all: main clib pylib
 main: build/main.o build/OFSniff.o build/EndpointLatencyMetadata.o build/LLDP_TLV.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $(EXENAME) $(LDFLAGS)
 
-build/OFSniff.o: OFSniff.cpp include/OFSniff.h include/OFSniffCommon.h include/EndpointLatencyMetadata.h include/OpenFlowPDUs.h include/LLDP_TLV.h
+build/OFSniff.o: OFSniff.cpp include/OFSniff.h include/OFSniffCommon.h include/EndpointLatencyMetadata.h include/OpenFlowPDUs.h include/LLDP_TLV.h include/LatencyMetadata.h
 	mkdir -p build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
@@ -18,11 +18,11 @@ build/LLDP_TLV.o: LLDP_TLV.cpp include/LLDP_TLV.h
 	mkdir -p build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
-build/EndpointLatencyMetadata.o: EndpointLatencyMetadata.cpp include/EndpointLatencyMetadata.h
+build/EndpointLatencyMetadata.o: EndpointLatencyMetadata.cpp include/EndpointLatencyMetadata.h include/LatencyMetadata.h
 	mkdir -p build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
-build/main.o: main.cpp include/OFSniff.h include/OFSniffCommon.h
+build/main.o: main.cpp include/OFSniff.h include/OFSniffCommon.h include/LatencyMetadata.h
 	mkdir -p build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 

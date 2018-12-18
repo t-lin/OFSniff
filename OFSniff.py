@@ -28,6 +28,31 @@ if os.getuid() != 0:
     print msg
     sys.exit(1)
 
+# Given a numerical endpoint (i.e. those returned by OFSniff.getEndpoints()),
+# return an (IP, port #) tuple where the IP is a string, the port is an int
+# Endpoint expected to be either a long or an int
+def endpointNum2Pair(endpoint):
+    assert type(endpoint) in (long, int)
+    port = int(endpoint & 0xffff)
+    ip = endpoint >> 16 # IP is in network byte-order
+    ip = [ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, (ip >> 24) & 0xff]
+    ip = '.'.join(str(octet) for octet in ip) # Convert to string
+
+    return (ip, port)
+
+# Given an (IP, port #) tuple, return a numerical endpoint
+# IP is a string in decimal dot notation (i.e. 10.11.12.13)
+# Port can be either a string or integer
+def endpointPair2Num(ip, port):
+    port = int(port)
+    ip = [int(octet) for octet in ip.split('.')]
+    ip = (ip[3] << 24) | (ip[2] << 16) | (ip[1] << 8) | ip[0] # To network byte-order
+
+    endpoint = (ip << 16) | port
+
+    return endpoint
+
+
 # Class OFSniff to wrap methods to call underlying _OFSniff methods
 # Using this as a wrapper class allows the same instance to be passed
 # and shared between multiple files with a single import
