@@ -386,20 +386,20 @@ static PyObject* _OFSniff_getDp2CtrlRTT(PyObject *self, PyObject *args, PyObject
 
 
 static PyMethodDef OFSniffMethods[] = {
-    {"startSniffLoop", (PyCFunction)_OFSniff_startSniffLoop, METH_VARARGS, "Start sniffing in secondary thread"},
+    {"startSniffLoop", (PyCFunction)_OFSniff_startSniffLoop, METH_KEYWORDS, "Start sniffing in secondary thread"},
     {"stopSniffLoop", _OFSniff_stopSniffLoop, METH_VARARGS, "Stop sniffing"},
     {"isSniffing", _OFSniff_isSniffing, METH_VARARGS, "Indicates whether the sniff loop has started"},
     {"getEndpoints", (PyCFunction)_OFSniff_getEndpoints, METH_VARARGS, "Get endpoints"},
-    {"getEchoRTTAvg", (PyCFunction)_OFSniff_getEchoRTTAvg, METH_VARARGS, "Get the average echo RTT for a given endpoint"},
-    {"getEchoRTTVar", (PyCFunction)_OFSniff_getEchoRTTVar, METH_VARARGS, "Get the variance of echo RTT for a given endpoint"},
-    {"getEchoRTTMed", (PyCFunction)_OFSniff_getEchoRTTMed, METH_VARARGS, "Get the median of echo RTT for a given endpoint"},
-    {"getPktInRTTAvg", (PyCFunction)_OFSniff_getPktInRTTAvg, METH_VARARGS, "Get the average PacketIn RTT for a given endpoint"},
-    {"getPktInRTTVar", (PyCFunction)_OFSniff_getPktInRTTVar, METH_VARARGS, "Get the variance of PacketIn RTT for a given endpoint"},
-    {"getPktInRTTMed", (PyCFunction)_OFSniff_getPktInRTTMed, METH_VARARGS, "Get the median of PacketIn RTT for a given endpoint"},
-    {"getLinkLatAvg", (PyCFunction)_OFSniff_getLinkLatAvg, METH_VARARGS, "Get the average link latency for a given endpoint and port"},
-    {"getLinkLatVar", (PyCFunction)_OFSniff_getLinkLatVar, METH_VARARGS, "Get the variance of link latnecy for a given endpoint and port"},
-    {"getLinkLatMed", (PyCFunction)_OFSniff_getLinkLatMed, METH_VARARGS, "Get the median of link latnecy for a given endpoint and port"},
-    {"getDp2CtrlRTT", (PyCFunction)_OFSniff_getDp2CtrlRTT, METH_VARARGS, "Get the datapath to controller RTT for a given endpoint"},
+    {"getEchoRTTAvg", (PyCFunction)_OFSniff_getEchoRTTAvg, METH_KEYWORDS, "Get the average echo RTT for a given endpoint"},
+    {"getEchoRTTVar", (PyCFunction)_OFSniff_getEchoRTTVar, METH_KEYWORDS, "Get the variance of echo RTT for a given endpoint"},
+    {"getEchoRTTMed", (PyCFunction)_OFSniff_getEchoRTTMed, METH_KEYWORDS, "Get the median of echo RTT for a given endpoint"},
+    {"getPktInRTTAvg", (PyCFunction)_OFSniff_getPktInRTTAvg, METH_KEYWORDS, "Get the average PacketIn RTT for a given endpoint"},
+    {"getPktInRTTVar", (PyCFunction)_OFSniff_getPktInRTTVar, METH_KEYWORDS, "Get the variance of PacketIn RTT for a given endpoint"},
+    {"getPktInRTTMed", (PyCFunction)_OFSniff_getPktInRTTMed, METH_KEYWORDS, "Get the median of PacketIn RTT for a given endpoint"},
+    {"getLinkLatAvg", (PyCFunction)_OFSniff_getLinkLatAvg, METH_KEYWORDS, "Get the average link latency for a given endpoint and port"},
+    {"getLinkLatVar", (PyCFunction)_OFSniff_getLinkLatVar, METH_KEYWORDS, "Get the variance of link latnecy for a given endpoint and port"},
+    {"getLinkLatMed", (PyCFunction)_OFSniff_getLinkLatMed, METH_KEYWORDS, "Get the median of link latnecy for a given endpoint and port"},
+    {"getDp2CtrlRTT", (PyCFunction)_OFSniff_getDp2CtrlRTT, METH_KEYWORDS, "Get the datapath to controller RTT for a given endpoint"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

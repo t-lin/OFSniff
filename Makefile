@@ -30,7 +30,8 @@ clib: build/OFSniff.o build/EndpointLatencyMetadata.o build/LLDP_TLV.o
 	mkdir -p build
 	ar rcs build/lib$(EXENAME).a $^
 
-pylib: CPPFLAGS += -I/usr/include/python2.7
+#pylib: CPPFLAGS += -I/usr/include/python2.7
+pylib: CPPFLAGS += -I/usr/lib/pypy/include
 pylib: py-OFSniff.cpp clib
 	mkdir -p $(MKFILE_DIR)build
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -DNDEBUG -g -fwrapv -fno-strict-aliasing -Wdate-time -D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wformat -Werror=format-security -c $< -o $(MKFILE_DIR)build/py_$(EXENAME).o
