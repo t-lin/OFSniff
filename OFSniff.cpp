@@ -218,6 +218,7 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
                 // END DEBUGGING
 
 #ifdef PRINTOUT
+                cout << "... Dp2CtrlRTT of other endpoint: " << dp2CtrlRTT << " ms" << endl;
                 cout << "... Estimated link RTT: " << estimatedLat << " ms" << endl;
                 cout << "... Average link RTT: " << epLatMeta.getLinkLatAvg(dpEndpoint, port_no) <<
                         " ms ; stdev = " << sqrt(epLatMeta.getLinkLatVar(dpEndpoint, port_no)) << endl;
@@ -254,7 +255,8 @@ void ProcessLLDP(Timestamp ts, IPv4EndpointType dpEndpoint, EthernetII& ethFrame
     return;
 }
 
-/* Processes OpenFlow Echo Request and Replies
+/* TODO: THIS HAS BEEN DEPRECATED, REMOVE?
+ * Processes OpenFlow Echo Request and Replies
  * Measures RTT to-and-from switch when echos are initiated by the controller
  */
 void ProcessEcho(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
@@ -327,12 +329,16 @@ void ParseOFPacket(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
             //cout << "OpenFlow PacketOut" << endl;
             // Convert generic OFMsgPDU to OFPacketOutPDU
             of10::PacketOut packetOut;
-            packetOut.unpack((uint8_t*)ofMsg.get_buffer().data()); // using just Tins
+            if (packetOut.unpack((uint8_t*)ofMsg.get_buffer().data()) == OF_ERROR) {
+                cout << "ERROR: Unable to parse PacketOut message" << endl;
+            }
+            else {
+                if (packetOut.buffer_id() == of10::OFP_NO_BUFFER) {
+                    EthernetII ethFrame((const uint8_t*)packetOut.data(),
+                                                    packetOut.data_len());
 
-            if (packetOut.buffer_id() == of10::OFP_NO_BUFFER) {
-                EthernetII ethFrame((const uint8_t*)packetOut.data(), packetOut.data_len());
-
-                ProcessLLDP(ts, dpEndpoint, ethFrame, epLatMeta, false);
+                    ProcessLLDP(ts, dpEndpoint, ethFrame, epLatMeta, false);
+                }
             }
             break;
         }
@@ -346,7 +352,10 @@ void ParseOFPacket(Timestamp ts, IPv4EndpointType dpEndpoint, OFMsgPDU& ofMsg,
             break;
         }
         default:
-            cout << "Unknown OF message type: " << (uint16_t)ofMsg.type() << endl;
+            if (ofMsg.type() <= of10::OFPT_QUEUE_GET_CONFIG_REPLY)
+                cout << "Unimplemented OF message type: " << (uint16_t)ofMsg.type() << endl;
+            else
+                cout << "Unknown OF message type: " << (uint16_t)ofMsg.type() << endl;
             break;
     }
 
@@ -370,6 +379,10 @@ void OFSniffLoop(Sniffer*& sniffer, uint16_t ofp_port,
 
         if (const IP *ip = packet->pdu()->find_pdu<IP>()) {
             pduType = "IP";
+            if (ip->flags() == 1) {
+                cout << "ERROR: Currently do not support packets w/ IPv4's More Fragments flag set" << endl;
+                continue;
+            }
 
             // Right now, assume only TCP & UDP above IP
             if (const TCP *tcp = packet->pdu()->find_pdu<TCP>()) {
